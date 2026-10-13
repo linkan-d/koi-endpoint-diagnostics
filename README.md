@@ -387,28 +387,6 @@ When contacting support, provide:
 
 ---
 
-## FAQ
-
-**Q: Will this script change anything on my server?**
-A: No. It only reads information and makes test connections. It doesn't modify, install, restart or delete anything. The only file it creates is the report.
-
-**Q: Does it need internet access?**
-A: It runs without internet access, but the connectivity checks will fail or warn. Testing whether the Koi API is reachable is part of what it diagnoses.
-
-**Q: Can I run it more than once?**
-A: Yes. Each run creates a new, timestamped report.
-
-**Q: Where is the report saved?**
-A: In the script's folder, or in `%TEMP%` if that folder isn't writable. The path is printed at the end of the run.
-
-**Q: I get "requires administrator privileges".**
-A: Close PowerShell and reopen it with **Run as Administrator**.
-
-**Q: Can I run it unattended, for example from an RMM tool or Task Scheduler?**
-A: Yes. Pass `-Mode Comprehensive` (or `Network` / `Agent`) so no menu is shown, and run it with administrator rights.
-
----
-
 ## Script Details
 
 | Detail | Value |
