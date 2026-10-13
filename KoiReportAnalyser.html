@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Koi Report Analyser V1.0 - Created by Linkan Dash. Independent tool; not built, endorsed or supported by Palo Alto Networks or Koi. -->
+<title>Koi Report Analyser V1.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single working column — load panel, verdict + health strip, issue cards, working list, full check table, raw sections. */
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --surface-2: #eaeef2;
+  --ink: #15212c;
+  --muted: #586774;
+  --line: #d6dde4;
+  --accent: #0b6b78;
+  --accent-ink: #ffffff;
+  --fail: #b8322a;  --fail-bg: #fbeceb;
+  --warn: #9a5b06;  --warn-bg: #fcf2e1;
+  --pass: #1b7543;  --pass-bg: #e6f4ec;
+  --info: #475d75;  --info-bg: #ebf0f5;
+  --code-bg: #eef2f5;
+  --font-ui: "Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Cascadia Mono", ui-monospace, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e141a; --surface: #151d25; --surface-2: #1c2630; --ink: #e2e8ee; --muted: #94a2af; --line: #2a3541;
+    --accent: #4fb6c2; --accent-ink: #06232a;
+    --fail: #f07b71; --fail-bg: #351c1a; --warn: #e6a64a; --warn-bg: #352712; --pass: #5dc48b; --pass-bg: #142c1e; --info: #a3b6cb; --info-bg: #1b2531;
+    --code-bg: #101820; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e141a; --surface: #151d25; --surface-2: #1c2630; --ink: #e2e8ee; --muted: #94a2af; --line: #2a3541;
+  --accent: #4fb6c2; --accent-ink: #06232a;
+  --fail: #f07b71; --fail-bg: #351c1a; --warn: #e6a64a; --warn-bg: #352712; --pass: #5dc48b; --pass-bg: #142c1e; --info: #a3b6cb; --info-bg: #1b2531;
+  --code-bg: #101820; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 40px; display: grid; gap: 28px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.01em; }
+h2.section-title { font-size: 1.15rem; font-weight: 650; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+h2.section-title .count { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-size: 0.86em; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 500; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible, summary:focus-visible, textarea:focus-visible, .drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Header + load panel */
+header { display: grid; gap: 8px; }
+header p { max-width: 64ch; color: var(--muted); }
+.load { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 14px; }
+.drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 22px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; background: var(--surface-2); transition: border-color .15s, background .15s; }
+.drop.over { border-color: var(--accent); background: var(--info-bg); }
+.drop .drop-text { flex: 1 1 260px; min-width: 0; }
+.drop .drop-text strong { display: block; font-weight: 600; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 7px; padding: 8px 14px; font-weight: 500; font-size: 0.92rem; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.small { padding: 4px 10px; font-size: 0.8rem; }
+.paste { display: grid; gap: 8px; }
+.paste textarea { width: 100%; min-height: 140px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--surface); color: var(--ink); font-family: var(--font-mono); font-size: 0.8rem; }
+.loaded { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 0.88rem; }
+.tag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.tag.sample { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.error { background: var(--fail-bg); color: var(--fail); border-radius: 8px; padding: 12px 14px; font-weight: 500; }
+.privacy { font-size: 0.82rem; color: var(--muted); }
+
+/* Verdict */
+.verdict { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.verdict-top { padding: 20px 20px 18px; display: grid; gap: 10px; border-bottom: 1px solid var(--line); }
+.verdict-top.state-fail { background: linear-gradient(var(--fail-bg), var(--fail-bg)) top / 100% 4px no-repeat, var(--surface); }
+.verdict-top.state-warn { background: linear-gradient(var(--warn), var(--warn)) top / 100% 4px no-repeat, var(--surface); }
+.verdict-top.state-pass { background: linear-gradient(var(--pass), var(--pass)) top / 100% 4px no-repeat, var(--surface); }
+.verdict-top.state-fail { background: linear-gradient(var(--fail), var(--fail)) top / 100% 4px no-repeat, var(--surface); }
+.verdict h2 { font-size: 1.35rem; font-weight: 650; max-width: 40ch; }
+.counts { display: flex; flex-wrap: wrap; gap: 8px; }
+.count-pill { display: inline-flex; align-items: baseline; gap: 6px; border-radius: 6px; padding: 3px 10px; font-weight: 600; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.count-pill b { font-family: var(--font-mono); font-size: 1rem; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px 20px; padding: 16px 20px; margin: 0; }
+.facts div { min-width: 0; }
+.facts dt { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 2px 0 0; font-weight: 500; overflow-wrap: anywhere; }
+
+/* Health strip */
+.health { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: start; min-width: 0; }
+.tile .glyph { grid-row: span 2; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 0.85rem; font-family: var(--font-mono); }
+.tile .t-label { font-weight: 600; font-size: 0.9rem; }
+.tile .t-sub { font-size: 0.8rem; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.g-ok { background: var(--pass-bg); color: var(--pass); }
+.g-bad { background: var(--fail-bg); color: var(--fail); }
+.g-warn { background: var(--warn-bg); color: var(--warn); }
+.g-na { background: var(--surface-2); color: var(--muted); }
+
+/* Status chips */
+.chip { display: inline-block; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 500; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+.s-FAIL { background: var(--fail-bg); color: var(--fail); }
+.s-WARN { background: var(--warn-bg); color: var(--warn); }
+.s-PASS { background: var(--pass-bg); color: var(--pass); }
+.s-INFO { background: var(--info-bg); color: var(--info); }
+
+/* Issue cards */
+.group { display: grid; gap: 12px; }
+.issues { display: grid; gap: 12px; }
+.issue { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px; padding: 16px 18px; display: grid; gap: 10px; min-width: 0; }
+.issue.sev-FAIL { border-left-color: var(--fail); }
+.issue.sev-WARN { border-left-color: var(--warn); }
+.issue-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.issue-head h3 { font-size: 1.02rem; font-weight: 650; }
+.issue-head .area { font-size: 0.8rem; color: var(--muted); margin-left: auto; }
+.evidence { font-family: var(--font-mono); font-size: 0.8rem; background: var(--code-bg); border-radius: 6px; padding: 8px 10px; overflow-wrap: anywhere; color: var(--ink); }
+.evidence .ev-name { color: var(--muted); }
+.issue h4 { margin: 0; font-size: 0.72rem; font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.issue ol { margin: 0; padding-left: 1.3em; display: grid; gap: 4px; }
+.issue .block { display: grid; gap: 4px; max-width: 75ch; }
+.cmd { display: flex; gap: 8px; align-items: flex-start; background: var(--code-bg); border-radius: 6px; padding: 8px 10px; min-width: 0; }
+.cmd code { flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 0.8rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cmd .lbl { font-family: var(--font-mono); font-size: 0.68rem; color: var(--pass); letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; padding-top: 2px; }
+.derived { font-size: 0.72rem; color: var(--info); font-weight: 600; }
+details.expected { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; }
+details.expected summary { cursor: pointer; font-weight: 600; }
+details.expected ul { margin: 10px 0 0; padding-left: 1.2em; display: grid; gap: 6px; }
+
+/* Working */
+.working { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.ok-item { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; grid-template-columns: auto 1fr; gap: 0 10px; min-width: 0; }
+.ok-item .glyph { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 0.72rem; font-weight: 700; grid-row: span 2; margin-top: 2px; }
+.ok-item .n { font-weight: 600; font-size: 0.9rem; }
+.ok-item .d { font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; min-width: 0; }
+.empty-note { color: var(--muted); font-size: 0.9rem; }
+
+/* Table */
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.filter { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 4px 12px; font-size: 0.82rem; font-weight: 500; }
+.filter[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--surface-2); }
+tr:last-child td { border-bottom: 0; }
+td.det { font-family: var(--font-mono); font-size: 0.78rem; overflow-wrap: anywhere; min-width: 240px; }
+td.nm { font-weight: 600; min-width: 170px; }
+td.ar { color: var(--muted); white-space: nowrap; }
+
+/* Raw sections */
+.raw { display: grid; gap: 6px; }
+.raw details { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.raw summary { padding: 10px 14px; cursor: pointer; font-family: var(--font-mono); font-size: 0.82rem; display: flex; gap: 10px; flex-wrap: wrap; }
+.raw summary span { color: var(--muted); }
+.raw pre { margin: 0; padding: 12px 14px; border-top: 1px solid var(--line); background: var(--code-bg); font-family: var(--font-mono); font-size: 0.76rem; line-height: 1.5; overflow: auto; max-height: 420px; white-space: pre; }
+
+/* Footer */
+footer { border-top: 1px solid var(--line); padding-top: 18px; display: grid; gap: 6px; font-size: 0.86rem; color: var(--muted); }
+footer .by { color: var(--ink); font-weight: 600; }
+
+.toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: center; }
+
+@media (max-width: 520px) {
+  .wrap { padding-inline: 16px; }
+  h1 { font-size: 1.45rem; }
+  .verdict h2 { font-size: 1.15rem; }
+  .issue-head .area { margin-left: 0; width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.export-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; width: 100%; padding-top: 12px; border-top: 1px solid var(--line); }
+.export-bar .muted { margin-right: 4px; }
+
+/* Print / Save as PDF: light colours, controls and raw output hidden, report kept */
+@media print {
+  :root:not([data-theme="light"]), :root[data-theme="dark"], :root {
+    --bg: #ffffff; --surface: #ffffff; --surface-2: #f2f4f6; --ink: #000000; --muted: #333333; --line: #bbbbbb;
+    --code-bg: #f2f4f6; color-scheme: light;
+  }
+  body { background: #ffffff; }
+  header, footer, .drop, .paste, #errorBox, .export-bar, .btn, button, .raw, .filters, details.expected summary { display: none !important; }
+  .load { border: 0; padding: 0; box-shadow: none; }
+  .loaded { display: block; }
+  .verdict, .issue, .tile, .ok-item { break-inside: avoid; }
+  .group { break-inside: auto; }
+  .wrap { padding-block: 0; }
+  a { color: inherit; text-decoration: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Koi agent · troubleshooting</span>
+    <h1>Koi Report Analyser V1.0</h1>
+    <p>Load the <span class="mono">KoiDiagnostics_&lt;Computer&gt;_&lt;Timestamp&gt;.txt</span> report produced by <span class="mono">KoiDiagnostics_Simple.ps1</span>. The analyser shows what's working, what isn't, and what to do next.</p>
+  </header>
+
+  <section class="load" aria-label="Load a report">
+    <div class="drop" id="drop">
+      <div class="drop-text">
+        <strong>Drop the report file here</strong>
+        <span class="muted">or choose it from your computer. Text files from the script (UTF-8 or UTF-16) are supported.</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" id="pick" type="button">Choose report file</button>
+        <button class="btn" id="togglePaste" type="button" aria-expanded="false" aria-controls="pastePanel">Paste text</button>
+        <button class="btn" id="loadSample" type="button">Load sample</button>
+        <button class="btn" id="reset" type="button">Reset</button>
+      </div>
+      <input type="file" id="file" accept=".txt,.log,text/plain" hidden>
+    </div>
+    <div class="paste" id="pastePanel" hidden>
+      <label for="pasteBox" class="muted">Paste the full contents of the report:</label>
+      <textarea id="pasteBox" spellcheck="false" placeholder="Koi Diagnostics Script v1.1&#10;Author   : Linkan Dash&#10;..."></textarea>
+      <div class="btn-row"><button class="btn primary" id="analysePaste" type="button">Analyse pasted text</button></div>
+    </div>
+    <div class="loaded" id="loaded"></div>
+    <div id="errorBox" class="error" role="alert" hidden></div>
+    <p class="privacy">The report is read and analysed inside this browser tab. It is not uploaded or stored anywhere.</p>
+  </section>
+
+  <main id="results" class="wrap" style="padding:0;max-width:none"></main>
+
+  <footer>
+    <span class="by">Created by Linkan Dash</span>
+    <span>P.S. This is an independent, personal troubleshooting tool. It is not built, endorsed or supported by Palo Alto Networks or by Koi. Always confirm findings with official vendor documentation and support.</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- small DOM helper (text only, never innerHTML for report content) ----------
+  function h(tag, props) {
+    var el = document.createElement(tag);
+    if (props) {
+      Object.keys(props).forEach(function (k) {
+        var v = props[k];
+        if (v === null || v === undefined || v === false) return;
+        if (k === 'class') el.className = v;
+        else if (k === 'text') el.textContent = v;
+        else if (k.indexOf('on') === 0) el.addEventListener(k.slice(2), v);
+        else el.setAttribute(k, v === true ? '' : v);
+      });
+    }
+    for (var i = 2; i < arguments.length; i++) append(el, arguments[i]);
+    return el;
+  }
+  function append(el, kid) {
+    if (kid === null || kid === undefined || kid === false) return;
+    if (Array.isArray(kid)) { kid.forEach(function (k) { append(el, k); }); return; }
+    el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  }
+
+  // ---------- sample report (clearly marked as a sample) ----------
+  function buildSample() {
+    var P = function (n, s, d) { return n.padEnd(38) + ' ' + s.padEnd(6) + ' ' + d; };
+    var bar = '='.repeat(70);
+    var S = function (t) { return ['', bar, t, bar]; };
+    return [].concat(
+      ['**********************', 'Windows PowerShell transcript start', 'Start time: 20261009101502', 'Username: EXAMPLE\\svc-admin', 'Machine: SRV-APP-014 (Microsoft Windows NT 10.0.20348.0)', '**********************',
+       'Koi Diagnostics Script v1.1', 'Author   : Linkan Dash', 'Purpose  : Troubleshooting only. READ-ONLY - no server configuration is changed.',
+       'Started  : 2026-10-09T10:15:02.4410000+01:00', 'Computer : SRV-APP-014', 'User     : EXAMPLE\\svc-admin', 'Mode     : Comprehensive', 'Koi API  : api.prod.koi.security', 'Proxy    : bcproxy:8080'],
+      S('SYSTEM INFORMATION'),
+      ['', 'Operating System:', '', 'Caption        : Microsoft Windows Server 2022 Standard', 'Version        : 10.0.20348', 'BuildNumber    : 20348', 'Architecture   : 64-bit',
+       'Domain         : example.local', 'LastBootUpTime : 02/10/2026 06:12:44', 'Uptime         : 07d 04h 02m', '', 'PowerShell Version: 5.1.20348.2849'],
+      S('NETWORK CONNECTIVITY TESTS'),
+      ['', 'DNS resolution:', P('Koi API DNS', 'WARN', 'No such host is known (may be expected if all egress goes via the proxy)'),
+       '', 'TCP connectivity (direct):', P('Koi API TCP 443 (direct)', 'WARN', 'Timed out after 5s (may be expected if all egress goes via the proxy)'),
+       '', 'HTTPS/TLS (direct):', '  curl: curl: (6) Could not resolve host: api.prod.koi.security HTTP_STATUS=000 PROXY_CONNECT=000 REMOTE_IP= TCP=0.000000s TLS=0.000000s',
+       P('Koi API HTTPS (direct)', 'WARN', 'curl exit 6 - Could not resolve host'),
+       '', 'Proxy bcproxy:8080:', P('Proxy DNS', 'PASS', 'Resolved to: 10.20.4.15'), P('Proxy TCP', 'PASS', 'Connected to 10.20.4.15:8080'),
+       '', 'HTTPS/TLS (via proxy):', '  curl: curl: (60) schannel: SEC_E_UNTRUSTED_ROOT (0x80090325) - The certificate chain was issued by an authority that is not trusted. HTTP_STATUS=000 PROXY_CONNECT=200 REMOTE_IP=10.20.4.15 TCP=0.003121s TLS=0.000000s',
+       P('Koi API HTTPS (via proxy)', 'FAIL', 'curl exit 60 - Server certificate not trusted')],
+      S('TLS CERTIFICATE INSPECTION'),
+      ['Retrieves the certificate presented for the Koi API (TLS handshake only - no data is sent).', '', 'Direct:',
+       P('Certificate (direct)', 'WARN', 'No such host is known (may be expected if all egress goes via the proxy)'),
+       '', 'Via proxy bcproxy:8080:', '', 'Subject      : CN=api.prod.koi.security', 'Issuer       : CN=Example Corp SSL Inspection CA, O=Example Corp',
+       'ValidFrom    : 08/10/2026 00:00:00', 'ValidTo      : 08/11/2026 00:00:00', 'Thumbprint   : 3F1A9C0E77B2D41E5A60C9D2B8E4F17A0C6D3B92', 'Protocol     : Tls12',
+       'Cipher       : Aes256 256-bit', 'ChainTrusted : False', 'ChainStatus  : PartialChain', 'ChainPath    : api.prod.koi.security', '',
+       P('Certificate trust (via proxy)', 'FAIL', 'Not trusted (PartialChain) - Issuer: CN=Example Corp SSL Inspection CA, O=Example Corp'),
+       'Tip: if the issuer shown via the proxy is an internal/corporate CA rather than a public CA,', '     the proxy is performing TLS inspection on Koi traffic.'],
+      S('TIME SYNCHRONISATION'),
+      ['TLS handshakes fail if the system clock is significantly wrong.', '', 'Local time : 2026-10-09T10:15:21.0170000+01:00', 'UTC time   : 2026-10-09T09:15:21.0170000Z',
+       '', 'Windows Time service status (w32tm /query /status):', '  Leap Indicator: 0(no warning)', '  Stratum: 3 (secondary reference - syncd by (S)NTP)', '  Source: dc01.example.local', '',
+       P('Clock skew vs Koi API', 'PASS', '2 s (via proxy; tolerance +/-300 s)')],
+      S('PROXY CONFIGURATION'),
+      ['', 'WinHTTP proxy (machine-wide, used by many services):', '  ', '  Current WinHTTP proxy settings:', '  ', '      Direct access (no proxy server).', '  ',
+       '', 'WinINet proxy settings - Current user (svc-admin):', '', 'ProxyEnable          : 1', 'ProxyServer          : bcproxy:8080', 'ProxyOverride        : <local>', 'AutoConfigURL        : ', 'ProxySettingsPerUser : ',
+       '', 'WinINet proxy settings - LocalSystem (Koi service context):', '', 'ProxyEnable          : 0', 'ProxyServer          : ', 'ProxyOverride        : ', 'AutoConfigURL        : ', 'ProxySettingsPerUser : ',
+       '', 'WinINet proxy settings - Machine policy:', '  Not configured / not readable',
+       '', 'Proxy-related environment variables (Process scope):', '  None set', '', 'Proxy-related environment variables (Machine scope):', '  None set'],
+      S('TLS / SCHANNEL CONFIGURATION'),
+      ['', 'Schannel client protocol settings:', '', 'Protocol Enabled DisabledByDefault Effective', '-------- ------- ----------------- ---------',
+       'TLS 1.0        0                 1 Disabled', 'TLS 1.1        0                 1 Disabled', 'TLS 1.2                           Not configured (OS default)', 'TLS 1.3                           Not configured (OS default)',
+       P('TLS 1.2 client', 'PASS', 'Not configured (OS default)'),
+       '', 'Schannel events (last 7 day(s), max 20):', P('Schannel events', 'INFO', '4 event(s) - review above (inbound-client errors are common noise)')],
+      S('KOI SERVICE STATUS'),
+      ['', 'Koi services:', '', 'Name        : KoiService', 'DisplayName : Koi Agent Service', 'State       : Running', 'StartMode   : Auto', 'StartName   : LocalSystem',
+       P('Service KoiService', 'PASS', 'State=Running, StartMode=Auto, RunAs=LocalSystem'),
+       '', 'Service Control Manager errors mentioning Koi (last 7 day(s)):', '09/10/2026 08:41:10 7031 The Koi Agent Service service terminated unexpectedly.',
+       P('Koi service crash/start errors', 'WARN', '3 event(s) - review above'),
+       '', 'Koi processes:', 'Process: KoiService (PID: 4412)', '  Memory   : 84.21 MB',
+       '', 'Koi binary verification:', '  File      : C:\\ProgramData\\Koi\\KoiService\\KoiService.exe', '  Signature : Valid', P('Signature KoiService.exe', 'PASS', 'Valid'),
+       '', 'Recent service log (last 50 lines):',
+       '2026-10-09T09:12:01Z INFO  Heartbeat scheduled                                PASS',
+       '2026-10-09T09:12:04Z ERROR Sync failed: The remote certificate is invalid according to the validation procedure.',
+       '', 'Searching Koi logs modified in the last 7 day(s) for errors/warnings...',
+       'File: C:\\ProgramData\\Koi\\KoiService\\KoiService.log  (last 6 matching lines)',
+       '  Line 812: 2026-10-09T09:12:04Z ERROR Sync failed: The remote certificate is invalid according to the validation procedure.',
+       P('Koi log errors', 'WARN', '6 matching line(s) across 2 recent file(s) - review above')],
+      S('SUMMARY'), ['Result: 2 FAIL, 6 WARN, 6 PASS, 1 INFO'],
+      S('DIAGNOSTIC COMPLETE'), ['Report saved to: C:\\Tools\\KoiDiagnostics_SRV-APP-014_20261009-101502.txt']
+    ).join('\n');
+  }
+
+  // ---------- parsing ----------
+  var AREA = {
+    'SYSTEM INFORMATION': 'System', 'NETWORK CONNECTIVITY TESTS': 'Network', 'TLS CERTIFICATE INSPECTION': 'Certificate',
+    'TIME SYNCHRONISATION': 'Time', 'PROXY CONFIGURATION': 'Proxy', 'TLS / SCHANNEL CONFIGURATION': 'TLS',
+    'TLS/SECURITY CONFIGURATION': 'TLS', 'KOI SERVICE STATUS': 'Koi agent', 'HEADER': 'Report'
+  };
+  function areaOf(section) { return AREA[section] || section.charAt(0) + section.slice(1).toLowerCase(); }
+
+  function decode(buf) {
+    var b = new Uint8Array(buf);
+    if (b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder('utf-16le').decode(buf);
+    if (b[0] === 0xFE && b[1] === 0xFF) return new TextDecoder('utf-16be').decode(buf);
+    // UTF-16LE without BOM: every second byte is zero for ASCII text
+    if (b.length > 8 && b[1] === 0 && b[3] === 0 && b[5] === 0) return new TextDecoder('utf-16le').decode(buf);
+    return new TextDecoder('utf-8').decode(buf).replace(/^\uFEFF/, '');
+  }
+
+  function parseReport(text) {
+    var lines = text.replace(/\r\n?/g, '\n').split('\n');
+    var sections = [{ title: 'HEADER', lines: [] }];
+    var cur = sections[0];
+    var checks = [];
+    var inLogTail = false;
+    var isBar = function (s) { return /^={20,}\s*$/.test(s || ''); };
+
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i];
+      if (isBar(l) && isBar(lines[i + 2]) && lines[i + 1] && lines[i + 1].trim()) {
+        cur = { title: lines[i + 1].trim(), lines: [] };
+        sections.push(cur);
+        i += 2; inLogTail = false;
+        continue;
+      }
+      cur.lines.push(l);
+      // Skip the raw service-log tail: Koi log lines contain words like INFO/ERROR that are not checks.
+      if (/^Recent service log/i.test(l)) { inLogTail = true; continue; }
+      if (/^Searching (Koi )?logs/i.test(l)) inLogTail = false;
+      if (inLogTail || cur.title === 'SUMMARY' || cur.title === 'DIAGNOSTIC COMPLETE') continue;
+
+      var m = l.match(/^(\S.*?) +(PASS|FAIL|WARN|INFO)(?: +(.*))?$/);
+      if (m && l.indexOf(' ' + m[2]) >= 30) {
+        checks.push({ name: m[1].trim(), status: m[2], details: (m[3] || '').trim(), section: cur.title, area: areaOf(cur.title) });
+      }
+    }
+
+    var grab = function (re) { var m = text.match(re); return m ? m[1].trim() : ''; };
+    var facts = {
+      version: grab(/^Koi Diagnostics Script(?: v([\d.]+))?/m) || (/^Koi Diagnostics Script/m.test(text) ? '1.0' : ''),
+      computer: grab(/^Computer\s*:\s*(.+)$/m),
+      started: grab(/^Started\s*:\s*(.+)$/m),
+      mode: grab(/^Mode\s*:\s*(.+)$/m),
+      proxy: grab(/^Proxy\s*:\s*(.+)$/m),
+      user: grab(/^User\s*:\s*(.+)$/m),
+      os: grab(/^Caption\s*:\s*(.+)$/m),
+      ps: grab(/^PowerShell Version:\s*(.+)$/m),
+      api: grab(/^Koi API\s*:\s*(.+)$/m)
+    };
+
+    var report = { text: text, sections: sections, checks: checks, facts: facts };
+    addDerived(report);
+    return report;
+  }
+
+  function sectionText(report, title) {
+    var s = report.sections.filter(function (x) { return x.title === title; })[0];
+    return s ? s.lines.join('\n') : '';
+  }
+  function between(text, startRe, endRe) {
+    var s = text.search(startRe);
+    if (s < 0) return '';
+    var rest = text.slice(s);
+    var firstNl = rest.indexOf('\n');
+    var tail = firstNl >= 0 ? rest.slice(firstNl + 1) : '';
+    var e = endRe ? tail.search(endRe) : -1;
+    return e >= 0 ? tail.slice(0, e) : tail;
+  }
+
+  // Extra finding the analyser derives from the proxy section.
+  function addDerived(report) {
+    var c = report.checks;
+    var find = function (re) { return c.filter(function (x) { return re.test(x.name); }); };
+    var proxyTested = find(/HTTPS \(via proxy\)/).length > 0;
+    var proxyTcpOk = find(/^Proxy TCP$/).some(function (x) { return x.status === 'PASS'; });
+    var directOk = find(/HTTPS \(direct\)/).some(function (x) { return x.status === 'PASS'; });
+    var proxyText = sectionText(report, 'PROXY CONFIGURATION');
+    if (!proxyTested || !proxyTcpOk || directOk || !proxyText) return;
+
+    var winhttpDirect = /Direct access \(no proxy server\)/i.test(proxyText);
+    var ls = between(proxyText, /WinINet proxy settings - LocalSystem/i, /WinINet proxy settings - Machine|Proxy-related environment/i);
+    var lsProxy = /ProxyEnable[ \t]*:[ \t]*1/.test(ls) && /ProxyServer[ \t]*:[ \t]*\S/.test(ls);
+    var pol = between(proxyText, /WinINet proxy settings - Machine policy/i, /Proxy-related environment/i);
+    var polProxy = /ProxyServer[ \t]*:[ \t]*\S/.test(pol);
+    var mach = between(proxyText, /environment variables \(Machine scope\)/i, null);
+    var envProxy = /^[ \t]+\S*PROXY\S*[ \t]*=[ \t]*\S/im.test(mach);
+    var svcEnv = /Service-specific environment for[^\n]*\n(?:[ \t]{4}.*\n?)*/i.exec(report.text);
+    var svcEnvProxy = svcEnv ? /PROXY\S*=\S/i.test(svcEnv[0]) : false;
+
+    if (winhttpDirect && !lsProxy && !polProxy && !envProxy && !svcEnvProxy) {
+      c.push({
+        name: 'Proxy configured for Koi service', status: 'WARN', section: 'PROXY CONFIGURATION', area: 'Proxy', derived: 'svcproxy',
+        details: 'Direct path blocked, but no machine-wide proxy found (WinHTTP: direct access, LocalSystem: no proxy, no HTTPS_PROXY variable)'
+      });
+    }
+  }
+
+  // ---------- knowledge base ----------
+  var RULES = [
+    { test: function (c) { return c.name === 'Koi service installed' && c.status === 'FAIL'; }, pri: 1,
+      headline: 'The Koi agent is not installed on this server.', title: 'Koi agent not installed',
+      meaning: 'No Windows service with "Koi" in its name was found, so nothing on this server can talk to Koi.',
+      steps: ['Confirm the agent was deployed to this server.', 'Reinstall the Koi agent from your approved package, then re-run the diagnostics.'],
+      cmd: "Get-Service | Where-Object { $_.Name -like '*Koi*' -or $_.DisplayName -like '*Koi*' }" },
+    { test: function (c) { return /^Service /.test(c.name) && c.status === 'FAIL'; }, pri: 2,
+      headline: 'The Koi service is installed but not running.', title: 'Koi service not running',
+      meaning: 'The service exists but is stopped or stuck, so the agent cannot report in.',
+      steps: ['Check "Koi service crash/start errors" in this report for the reason it stopped.', 'Ask the server owner to start the service. Starting a service is a change, so follow your change process.'],
+      cmd: "Get-Service | Where-Object { $_.DisplayName -like '*Koi*' } | Format-List Name, Status, StartType" },
+    { test: function (c) { return c.name === 'Koi processes' && c.status === 'FAIL'; }, pri: 3,
+      headline: 'No Koi process is running on this server.', title: 'No Koi process running',
+      meaning: 'No process with "Koi" in its name is active, so the agent is not doing any work.',
+      steps: ['Check the service state and crash events in this report.', 'If the service shows Running but no process exists, collect the service log and contact Koi support.'],
+      cmd: "Get-Process -Name '*Koi*'" },
+    { test: function (c) { return /^(Signature|Binary) /.test(c.name) && c.status === 'FAIL'; }, pri: 4,
+      headline: 'The Koi binary is missing or its signature is not valid.', title: 'Koi binary missing or signature invalid',
+      meaning: 'The agent executable is missing, unsigned, or its signature cannot be validated. Treat an invalid signature as a possible tampering issue.',
+      steps: ['Compare the file hash with the version published by Koi.', 'Reinstall the agent from a trusted source.', 'If the status is "UnknownError", check that the code-signing root certificate is present on the server.'],
+      cmd: "Get-AuthenticodeSignature 'C:\\ProgramData\\Koi\\KoiService\\KoiService.exe' | Format-List *" },
+    { test: function (c) { return c.name === 'Koi folder' && c.status === 'FAIL'; }, pri: 5,
+      headline: 'The Koi data folder does not exist on this server.', title: 'Koi folder missing',
+      meaning: 'C:\\ProgramData\\Koi (or the folder passed with -KoiRoot) was not found, so there are no agent logs or configuration there.',
+      steps: ['If Koi is installed somewhere else, re-run the script with -KoiRoot <path>.', 'Otherwise reinstall the agent.'],
+      cmd: "Test-Path 'C:\\ProgramData\\Koi'" },
+    { test: function (c) { return c.name === 'Proxy DNS' && c.status === 'FAIL'; }, pri: 10,
+      headline: 'The proxy server name does not resolve.', title: 'Proxy name does not resolve',
+      meaning: 'The server cannot look up the proxy hostname, so it cannot use the proxy at all.',
+      steps: ['Confirm the correct proxy hostname with the network team.', 'Re-run the script with -ProxyHost <correct name>, or use the proxy\u2019s fully qualified name.'],
+      cmd: 'Resolve-DnsName <proxy-host>' },
+    { test: function (c) { return c.name === 'Proxy TCP' && c.status === 'FAIL'; }, pri: 11,
+      headline: 'The proxy server cannot be reached on its port.', title: 'Proxy not reachable',
+      meaning: 'A TCP connection to the proxy failed. The proxy may be down, the port may be wrong, or a firewall is blocking the path.',
+      steps: ['Confirm the proxy host and port with IT.', 'Check host firewall rules and network ACLs between this server and the proxy.'],
+      cmd: 'Test-NetConnection <proxy-host> -Port <port>' },
+    { test: function (c) { return /HTTPS/.test(c.name) && /407/.test(c.details) && c.status !== 'PASS'; }, pri: 12,
+      headline: 'The proxy requires authentication, which the Koi service may not be able to provide.', title: 'Proxy requires authentication (407)',
+      meaning: 'The proxy answered HTTP 407. The Koi service usually runs as LocalSystem and may not be able to log in to the proxy.',
+      steps: ['Ask the proxy team to exempt api.prod.koi.security from proxy authentication.', 'Alternatively, let this server\u2019s IP reach that host without authentication.'],
+      cmd: 'curl.exe -v -x http://<proxy-host>:<port> https://api.prod.koi.security/api' },
+    { test: function (c) { return /HTTPS/.test(c.name) && /403/.test(c.details) && c.status !== 'PASS'; }, pri: 13,
+      headline: 'The proxy is blocking access to the Koi API.', title: 'Proxy denied the connection (403)',
+      meaning: 'The proxy refused to open a tunnel to the Koi API, usually because the host is not on its allow-list or its URL category is blocked.',
+      steps: ['Ask the proxy team to allow api.prod.koi.security on port 443.'],
+      cmd: 'curl.exe -v -x http://<proxy-host>:<port> https://api.prod.koi.security/api' },
+    { test: function (c) { return (/^Certificate trust/.test(c.name) && c.status === 'FAIL') || (/HTTPS/.test(c.name) && /not trusted/i.test(c.details) && c.status !== 'PASS'); }, pri: 14,
+      headline: 'The Koi API certificate is not trusted on this server, most likely because the proxy is inspecting TLS.', title: 'Certificate not trusted',
+      meaning: 'The certificate presented for the Koi API does not chain to a root this server trusts. When the issuer is a corporate CA, the proxy is decrypting and re-signing Koi traffic.',
+      steps: ['Check the issuer in the TLS CERTIFICATE INSPECTION section of the report.', 'Preferred fix: ask the proxy/security team to exclude api.prod.koi.security from SSL inspection.', 'If inspection must stay on, confirm with Koi support whether the agent can trust the corporate CA.'],
+      cmd: 'curl.exe -v -x http://<proxy-host>:<port> https://api.prod.koi.security/api' },
+    { test: function (c) { return /^Certificate expiry/.test(c.name) && c.status === 'FAIL'; }, pri: 15,
+      headline: 'The certificate presented for the Koi API has expired.', title: 'Certificate expired',
+      meaning: 'The certificate seen for the Koi API is past its expiry date. If the issuer is a corporate CA, the proxy\u2019s inspection certificate is out of date.',
+      steps: ['Check the issuer and validity dates in the TLS CERTIFICATE INSPECTION section.', 'If it is the proxy CA, the proxy team must renew it.', 'Also check the server clock result.'] },
+    { test: function (c) { return /HTTPS/.test(c.name) && /handshake/i.test(c.details) && c.status !== 'PASS'; }, pri: 15,
+      headline: 'TLS negotiation with the Koi API fails.', title: 'TLS handshake failed',
+      meaning: 'The server connected but could not agree TLS settings with the Koi API, or something in the path interrupted the handshake.',
+      steps: ['Check the "TLS 1.2 client" result and the cipher suites in the TLS / SCHANNEL section.', 'Check whether the proxy is inspecting TLS (TLS CERTIFICATE INSPECTION section).', 'Check whether endpoint security software is intercepting HTTPS.'] },
+    { test: function (c) { return /HTTPS/.test(c.name) && /revocation/i.test(c.details) && c.status !== 'PASS'; }, pri: 16,
+      headline: 'Certificate revocation lists cannot be reached from this server.', title: 'Certificate revocation check fails',
+      meaning: 'Windows could not reach the CRL/OCSP addresses it needs to check the certificate. Many agents refuse to connect when that happens.',
+      steps: ['Look at the "[no revocation check]" retest. If it passed, revocation is the only blocker.', 'Ask the proxy team to allow the certificate authority\u2019s CRL and OCSP URLs (usually plain HTTP on port 80).'] },
+    { test: function (c) { return /HTTPS \(via proxy\)/.test(c.name) && c.status === 'FAIL'; }, pri: 17,
+      headline: 'The Koi API cannot be reached through the proxy.', title: 'Koi API not reachable through the proxy',
+      meaning: 'The HTTPS request through the proxy failed. The curl exit code in the evidence shows at which stage.',
+      steps: ['Exit 7 or 28: the proxy did not respond. Check the Proxy TCP result.', 'Exit 56: the proxy dropped the tunnel. Ask the proxy team to check their logs for api.prod.koi.security.', 'Run the manual test below and share the output with the network team.'],
+      cmd: 'curl.exe -v -x http://<proxy-host>:<port> https://api.prod.koi.security/api' },
+    { test: function (c) { return /HTTPS \(direct\)/.test(c.name) && c.status === 'FAIL'; }, pri: 18,
+      headline: 'The Koi API cannot be reached from this server.', title: 'Koi API not reachable directly',
+      meaning: 'No proxy was configured for the test, and the direct HTTPS request failed.',
+      steps: ['If this network requires a proxy, re-run the script with -ProxyHost and -ProxyPort.', 'Otherwise ask the network team to allow outbound HTTPS to api.prod.koi.security.'],
+      cmd: 'curl.exe -v https://api.prod.koi.security/api' },
+    { test: function (c) { return /^Koi API (DNS|TCP)/.test(c.name) && c.status === 'FAIL'; }, pri: 19,
+      headline: 'This server cannot resolve or connect to the Koi API.', title: 'Koi API not reachable directly',
+      meaning: 'No proxy was configured for the test, and the direct DNS or TCP check failed.',
+      steps: ['If a proxy is required on this network, re-run the script with -ProxyHost and -ProxyPort.', 'Otherwise check DNS forwarding and outbound firewall rules for port 443.'],
+      cmd: 'Test-NetConnection api.prod.koi.security -Port 443' },
+    { test: function (c) { return c.name === 'Certificate (via proxy)' && c.status === 'FAIL'; }, pri: 19,
+      headline: 'A TLS session through the proxy cannot be completed.', title: 'Could not complete TLS through the proxy',
+      meaning: 'The certificate check through the proxy failed before a certificate was received. The evidence shows whether the proxy refused the tunnel.',
+      steps: ['Compare with the "Koi API HTTPS (via proxy)" result.', 'If the proxy refused the CONNECT request, ask the proxy team to allow api.prod.koi.security:443.'] },
+    { test: function (c) { return c.name === 'TLS inspection by proxy'; }, pri: 20,
+      headline: 'The proxy is decrypting and re-signing Koi traffic.', title: 'Proxy is inspecting Koi TLS traffic',
+      meaning: 'The certificate seen through the proxy has a different issuer from the real one. Agents often reject re-signed certificates.',
+      steps: ['Ask the proxy/security team to exclude api.prod.koi.security from SSL inspection.'] },
+    { test: function (c) { return /^Clock skew/.test(c.name) && c.status === 'FAIL'; }, pri: 21,
+      headline: 'The server clock is more than 5 minutes out, which breaks TLS.', title: 'System clock out of sync',
+      meaning: 'Certificates and tokens are time-sensitive. A large clock difference makes valid certificates look expired or not yet valid.',
+      steps: ['Check the Windows Time status in the TIME SYNCHRONISATION section.', 'Ask an administrator to fix the time source (domain hierarchy or NTP).'],
+      cmd: 'w32tm /query /status' },
+    { test: function (c) { return c.name === 'TLS 1.2 client' && c.status === 'FAIL'; }, pri: 22,
+      headline: 'TLS 1.2 is disabled on this server.', title: 'TLS 1.2 disabled',
+      meaning: 'The Schannel registry explicitly disables the TLS 1.2 client, which the Koi API needs.',
+      steps: ['Raise it with the server owner. Re-enabling TLS 1.2 is a configuration change and usually needs a reboot.'],
+      cmd: 'Get-ItemProperty "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.2\\Client"' },
+    { test: function (c) { return c.derived === 'svcproxy'; }, pri: 23,
+      headline: 'The proxy works, but the Koi service may not be set up to use it.', title: 'Koi service may not know about the proxy',
+      meaning: 'Direct internet access is blocked and the proxy is reachable, but no machine-wide proxy was found. A service running as LocalSystem may therefore try the blocked direct path.',
+      steps: ['Check in the Koi documentation how the agent picks up a proxy (agent setting, install parameter, or system proxy).', 'If the agent follows the system proxy, an administrator can set the WinHTTP proxy. That is a configuration change.'],
+      cmd: 'netsh winhttp show proxy' },
+    { test: function (c) { return c.name === 'Koi service crash/start errors' && c.status === 'WARN'; }, pri: 30,
+      headline: 'The Koi service has stopped unexpectedly or failed to start recently.', title: 'Recent Koi service crashes or start failures',
+      meaning: 'Service Control Manager logged errors for the Koi service in the lookback period.',
+      steps: ['Read the events listed in the KOI SERVICE STATUS section for times and error codes.', 'Match those times against the Koi service log.'],
+      cmd: "Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Service Control Manager'} -MaxEvents 200 | Where-Object { $_.Message -like '*Koi*' }" },
+    { test: function (c) { return c.name === 'Koi log errors' && c.status === 'WARN'; }, pri: 31,
+      headline: 'Koi logs contain recent errors.', title: 'Error lines in Koi logs',
+      meaning: 'Lines matching error keywords were found in recent Koi logs. Some may be harmless; repeated network, proxy or certificate messages usually match a finding above.',
+      steps: ['Read the matched lines in the KOI SERVICE STATUS section.', 'Messages mentioning 407, 403, certificate or timeout point to the network findings.'] },
+    { test: function (c) { return /curl\.exe not found/.test(c.details); }, pri: 35,
+      headline: 'HTTPS tests were skipped because curl.exe is missing.', title: 'curl.exe not available',
+      meaning: 'The HTTPS tests were skipped. curl.exe ships with Windows 10 1803 and Server 2019 or later.',
+      steps: ['Rely on the certificate inspection results, or run the script on a newer server on the same network.'] },
+    { test: function (c) { return /may be expected/.test(c.details); }, pri: 40, expected: true,
+      title: 'Direct path blocked (expected behind a proxy)',
+      meaning: 'Direct internet access from this server is blocked. That is normal when all traffic must go through the proxy.',
+      steps: ['No action needed if the via-proxy checks pass.'] },
+    { test: function (c) { return c.name === 'Schannel events'; }, pri: 50,
+      title: 'Schannel events present', meaning: 'Windows logged TLS events. Many come from inbound clients and are unrelated to Koi.',
+      steps: ['Look for events around the times the Koi agent fails to connect.'] },
+    { test: function (c) { return /^Clock skew/.test(c.name) && c.status === 'INFO'; }, pri: 50,
+      title: 'Clock skew not measured', meaning: 'The server Date header could not be read, usually because the API was not reachable.',
+      steps: ['Check the w32tm status in the TIME SYNCHRONISATION section.'] }
+  ];
+  function adviceFor(c) {
+    for (var i = 0; i < RULES.length; i++) if (RULES[i].test(c)) return RULES[i];
+    return { pri: 60, title: c.name, meaning: 'See the ' + c.section + ' section of the report for the full output of this check.', steps: [] };
+  }
+
+  // ---------- health strip ----------
+  function health(checks) {
+    var by = function (re) { return checks.filter(function (c) { return re.test(c.name); }); };
+    var st = function (list) {
+      if (!list.length) return 'na';
+      if (list.some(function (c) { return c.status === 'FAIL'; })) return 'bad';
+      if (list.some(function (c) { return c.status === 'PASS'; })) return 'ok';
+      return 'warn';
+    };
+    var tiles = [];
+
+    var svc = by(/^Service |^Koi service installed$/);
+    tiles.push({ label: 'Koi service running', state: st(svc), sub: svc.length ? (svc[0].status === 'PASS' ? svc[0].details.split(',')[0] : svc[0].details) : 'Agent checks not run' });
+
+    var https = by(/^Koi API HTTPS/);
+    var okPath = https.filter(function (c) { return c.status === 'PASS'; })[0];
+    var apiState = !https.length ? 'na' : okPath ? 'ok' : 'bad';
+    tiles.push({ label: 'Koi API reachable', state: apiState,
+      sub: !https.length ? 'Network checks not run' : okPath ? (/proxy/.test(okPath.name) ? 'Via proxy' : 'Direct') : 'No working path' });
+
+    var trust = by(/^Certificate trust/);
+    tiles.push({ label: 'Certificate trusted', state: st(trust), sub: trust.length ? (trust.some(function (c) { return c.status === 'FAIL'; }) ? 'Untrusted issuer' : 'Chain OK') : 'Not checked' });
+
+    var clock = by(/^Clock skew/).filter(function (c) { return c.status !== 'INFO'; });
+    tiles.push({ label: 'Clock in sync', state: st(clock), sub: clock.length ? clock[0].details.split(' (')[0] : 'Not measured' });
+
+    var sig = by(/^(Signature|Binary) /);
+    tiles.push({ label: 'Agent binary signed', state: st(sig), sub: sig.length ? sig[0].details : 'Not checked' });
+
+    var tls = by(/^TLS 1\.2 client$/);
+    tiles.push({ label: 'TLS 1.2 enabled', state: st(tls), sub: tls.length ? tls[0].details : 'Not checked' });
+    return tiles;
+  }
+
+  // ---------- rendering ----------
+  var results = document.getElementById('results');
+  var loaded = document.getElementById('loaded');
+  var errorBox = document.getElementById('errorBox');
+  var current = null;
+  var activeFilter = 'ALL';
+
+  function glyph(state) { return { ok: '\u2713', bad: '\u2715', warn: '!', na: '\u2013' }[state]; }
+
+  function copyText(text, btn) {
+    var done = function () { var t = btn.textContent; btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = t; }, 1400); };
+    var fallback = function () {
+      var ta = h('textarea', { 'aria-hidden': 'true', style: 'position:fixed;opacity:0;left:-9999px' });
+      ta.value = text; document.body.append(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) { btn.textContent = 'Select and copy manually'; }
+      ta.remove();
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+      else fallback();
+    } catch (e) { fallback(); }
+  }
+
+  function issueCard(c) {
+    var a = adviceFor(c);
+    var card = h('article', { class: 'issue sev-' + c.status },
+      h('div', { class: 'issue-head' },
+        h('span', { class: 'chip s-' + c.status, text: c.status }),
+        h('h3', { text: a.title }),
+        c.derived ? h('span', { class: 'derived', text: 'Found by analyser' }) : null,
+        h('span', { class: 'area', text: c.area })
+      ),
+      h('div', { class: 'evidence' }, h('span', { class: 'ev-name', text: c.name + ': ' }), c.details || '(no details)'),
+      h('div', { class: 'block' }, h('h4', { text: 'What it means' }), h('p', { text: a.meaning }))
+    );
+    if (a.steps && a.steps.length) {
+      card.append(h('div', { class: 'block' }, h('h4', { text: 'What to do' }),
+        h('ol', null, a.steps.map(function (s) { return h('li', { text: s }); }))));
+    }
+    if (a.cmd) {
+      var btn = h('button', { class: 'btn small', type: 'button', text: 'Copy' });
+      btn.addEventListener('click', function () { copyText(a.cmd, btn); });
+      card.append(h('div', { class: 'cmd' }, h('span', { class: 'lbl', text: 'Read-only check' }), h('code', { text: a.cmd }), btn));
+    }
+    return card;
+  }
+
+  function render(report, sourceLabel, isSample) {
+    current = report;
+    report.label = sourceLabel;
+    errorBox.hidden = true;
+    results.textContent = '';
+    loaded.textContent = '';
+    loaded.append(
+      isSample ? h('span', { class: 'tag sample', text: 'Sample report' }) : h('span', { class: 'tag', text: 'Loaded' }),
+      h('span', { class: 'mono', text: sourceLabel }),
+      isSample ? h('span', { class: 'muted', text: 'Example data only. Load your own report to analyse a real server.' }) : null,
+      h('div', { class: 'export-bar', role: 'group', 'aria-label': 'Export findings' },
+        h('span', { class: 'muted', text: 'Export:' }),
+        verdictCopyButton(), downloadButtons(), pdfButton())
+    );
+
+    var checks = report.checks;
+    var counts = { FAIL: 0, WARN: 0, PASS: 0, INFO: 0 };
+    checks.forEach(function (c) { counts[c.status]++; });
+
+    var fails = checks.filter(function (c) { return c.status === 'FAIL'; })
+      .sort(function (a, b) { return adviceFor(a).pri - adviceFor(b).pri; });
+    var warns = checks.filter(function (c) { return c.status === 'WARN'; });
+    var expected = warns.filter(function (c) { return adviceFor(c).expected; });
+    var review = warns.filter(function (c) { return !adviceFor(c).expected; })
+      .sort(function (a, b) { return adviceFor(a).pri - adviceFor(b).pri; });
+    var passes = checks.filter(function (c) { return c.status === 'PASS'; });
+
+    // Verdict
+    var state, pill, headline;
+    if (fails.length) {
+      state = 'fail';
+      pill = fails.length + (fails.length === 1 ? ' problem to fix' : ' problems to fix');
+      headline = adviceFor(fails[0]).headline || (fails[0].name + ' failed.');
+    } else if (review.length) {
+      state = 'warn';
+      pill = 'No failures, ' + review.length + ' to review';
+      headline = 'Nothing is failing. ' + (adviceFor(review[0]).headline || 'Some results need a closer look.');
+    } else {
+      state = 'pass';
+      pill = 'No problems found';
+      headline = 'Everything this report checked is working.';
+    }
+    var f = report.facts;
+    var factList = [
+      ['Server', f.computer], ['Operating system', f.os], ['Run at', f.started.replace('T', ' ').replace(/\.\d+/, '')],
+      ['Mode', f.mode], ['Proxy tested', f.proxy], ['Script version', f.version ? 'v' + f.version : '']
+    ].filter(function (x) { return x[1]; });
+
+    var verdict = h('section', { class: 'verdict', 'aria-label': 'Verdict' },
+      h('div', { class: 'verdict-top state-' + state },
+        h('span', { class: 'eyebrow', text: pill }),
+        h('h2', { text: headline }),
+        h('div', { class: 'counts' },
+          ['FAIL', 'WARN', 'PASS', 'INFO'].map(function (s) {
+            return h('span', { class: 'count-pill s-' + s }, h('b', { text: counts[s] }), { FAIL: 'failed', WARN: 'warnings', PASS: 'passed', INFO: 'info' }[s]);
+          }))
+      ),
+      factList.length ? h('dl', { class: 'facts' }, factList.map(function (x) { return h('div', null, h('dt', { text: x[0] }), h('dd', { text: x[1] })); })) : null
+    );
+
+    var tiles = h('section', { class: 'health', 'aria-label': 'Health at a glance' },
+      health(checks).map(function (t) {
+        return h('div', { class: 'tile' },
+          h('span', { class: 'glyph g-' + t.state, 'aria-hidden': 'true', text: glyph(t.state) }),
+          h('span', { class: 't-label' }, t.label, h('span', { class: 'sr-only', style: 'position:absolute;left:-9999px', text: ' — ' + { ok: 'yes', bad: 'no', warn: 'needs review', na: 'not checked' }[t.state] })),
+          h('span', { class: 't-sub', text: t.sub })
+        );
+      }));
+
+    results.append(verdict, tiles);
+
+    // Fix first
+    var fixSec = h('section', { class: 'group', 'aria-label': 'Problems to fix' },
+      h('h2', { class: 'section-title' }, 'Not working', h('span', { class: 'count', text: fails.length + ' failed' })));
+    if (fails.length) fixSec.append(h('div', { class: 'issues' }, fails.map(issueCard)));
+    else fixSec.append(h('p', { class: 'empty-note', text: 'No checks failed.' }));
+    results.append(fixSec);
+
+    // Review
+    if (review.length || expected.length) {
+      var revSec = h('section', { class: 'group', 'aria-label': 'Warnings to review' },
+        h('h2', { class: 'section-title' }, 'Worth reviewing', h('span', { class: 'count', text: warns.length + ' warnings' })));
+      if (review.length) revSec.append(h('div', { class: 'issues' }, review.map(issueCard)));
+      if (expected.length) {
+        revSec.append(h('details', { class: 'expected' },
+          h('summary', { text: expected.length + ' direct-path warning' + (expected.length > 1 ? 's' : '') + ' (expected behind a proxy)' }),
+          h('ul', null, expected.map(function (c) { return h('li', null, h('strong', { text: c.name + ': ' }), h('span', { class: 'mono', text: c.details })); }))));
+      }
+      results.append(revSec);
+    }
+
+    // Working
+    var workSec = h('section', { class: 'group', 'aria-label': 'Working' },
+      h('h2', { class: 'section-title' }, 'Working', h('span', { class: 'count', text: passes.length + ' passed' })));
+    if (passes.length) {
+      workSec.append(h('div', { class: 'working' }, passes.map(function (c) {
+        return h('div', { class: 'ok-item' },
+          h('span', { class: 'glyph g-ok', 'aria-hidden': 'true', text: '\u2713' }),
+          h('span', { class: 'n', text: c.name }),
+          h('span', { class: 'd', text: c.details }));
+      })));
+    } else workSec.append(h('p', { class: 'empty-note', text: 'No checks passed.' }));
+    results.append(workSec);
+
+    // All checks table
+    var tableSec = h('section', { class: 'group', 'aria-label': 'All checks' },
+      h('h2', { class: 'section-title' }, 'All checks', h('span', { class: 'count', text: checks.length + ' total' })));
+    var filters = h('div', { class: 'filters', role: 'group', 'aria-label': 'Filter by status' });
+    var tbody = h('tbody');
+    ['ALL', 'FAIL', 'WARN', 'PASS', 'INFO'].forEach(function (s) {
+      var n = s === 'ALL' ? checks.length : counts[s];
+      var b = h('button', { class: 'filter', type: 'button', 'aria-pressed': String(s === activeFilter), text: (s === 'ALL' ? 'All' : s) + ' (' + n + ')' });
+      b.addEventListener('click', function () {
+        activeFilter = s;
+        Array.prototype.forEach.call(filters.children, function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        fillTable();
+      });
+      filters.append(b);
+    });
+    function fillTable() {
+      tbody.textContent = '';
+      checks.filter(function (c) { return activeFilter === 'ALL' || c.status === activeFilter; }).forEach(function (c) {
+        tbody.append(h('tr', null,
+          h('td', null, h('span', { class: 'chip s-' + c.status, text: c.status })),
+          h('td', { class: 'nm', text: c.name }),
+          h('td', { class: 'det', text: c.details }),
+          h('td', { class: 'ar', text: c.area })));
+      });
+      if (!tbody.children.length) tbody.append(h('tr', null, h('td', { colspan: '4', class: 'muted', text: 'No checks with this status.' })));
+    }
+    fillTable();
+    tableSec.append(filters, h('div', { class: 'table-wrap' },
+      h('table', null, h('thead', null, h('tr', null, ['Status', 'Check', 'Details', 'Area'].map(function (t) { return h('th', { scope: 'col', text: t }); }))), tbody)));
+    results.append(tableSec);
+
+    // Raw sections
+    var rawSec = h('section', { class: 'group', 'aria-label': 'Report sections' },
+      h('h2', { class: 'section-title' }, 'Report sections', h('span', { class: 'count', text: 'raw output' })));
+    rawSec.append(h('div', { class: 'raw' }, report.sections.filter(function (s) { return s.lines.join('').trim(); }).map(function (s) {
+      return h('details', null,
+        h('summary', null, s.title === 'HEADER' ? 'REPORT HEADER' : s.title, h('span', { text: s.lines.length + ' lines' })),
+        h('pre', { text: s.lines.join('\n').replace(/^\n+|\n+$/g, '') }));
+    })));
+    results.append(rawSec);
+  }
+
+  function verdictCopyButton() {
+    var b = h('button', { class: 'btn', type: 'button', text: 'Copy summary for a ticket' });
+    b.addEventListener('click', function () { copyText(summaryText(current), b); });
+    return b;
+  }
+
+  // ---------- downloads (findings leave the page only when the user clicks) ----------
+  function downloadBlob(filename, mime, text) {
+    var url = URL.createObjectURL(new Blob([text], { type: mime + ';charset=utf-8' }));
+    var a = h('a', { href: url, download: filename, hidden: true });
+    document.body.append(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  }
+
+  function baseName(r) {
+    var n = (r.label || 'report').replace(/\.(txt|log)$/i, '').replace(/[^A-Za-z0-9._-]+/g, '_');
+    return n + '_findings';
+  }
+
+  function findingsData(r) {
+    var f = r.facts, counts = { FAIL: 0, WARN: 0, PASS: 0, INFO: 0 };
+    r.checks.forEach(function (c) { counts[c.status]++; });
+    return {
+      tool: 'Koi Report Analyser V1.0 (independent tool by Linkan Dash; not a Palo Alto Networks or Koi product)',
+      source: r.label || '',
+      generatedAt: new Date().toISOString(),
+      server: f.computer || '',
+      os: f.os || '',
+      runAt: f.started || '',
+      mode: f.mode || '',
+      proxyTested: f.proxy || '',
+      scriptVersion: f.version || '',
+      counts: counts,
+      checks: r.checks.map(function (c) {
+        var a = adviceFor(c);
+        return {
+          status: c.status, check: c.name, details: c.details, area: c.area, section: c.section,
+          derivedByAnalyser: !!c.derived, expectedBehindProxy: !!a.expected,
+          finding: c.status === 'PASS' ? '' : a.title,
+          meaning: c.status === 'PASS' ? '' : (a.meaning || ''),
+          whatToDo: a.steps || [],
+          readOnlyCheck: a.cmd || ''
+        };
+      })
+    };
+  }
+
+  // Quotes every cell and neutralises spreadsheet formula injection (cells starting with = + - @).
+  function csvCell(v) {
+    var s = String(v === null || v === undefined ? '' : v);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
+  function findingsCsv(r) {
+    var rows = [['Status', 'Check', 'Details', 'Area', 'Section', 'Finding', 'What it means', 'What to do', 'Read-only check']];
+    findingsData(r).checks.forEach(function (c) {
+      rows.push([c.status, c.check, c.details, c.area, c.section, c.finding, c.meaning,
+        c.whatToDo.map(function (s, i) { return (i + 1) + '. ' + s; }).join(' '), c.readOnlyCheck]);
+    });
+    // BOM so Excel opens the UTF-8 file correctly.
+    return '﻿' + rows.map(function (row) { return row.map(csvCell).join(','); }).join('\r\n') + '\r\n';
+  }
+
+  function findingsMarkdown(r) {
+    var d = findingsData(r), out = [], byPri = function (a, b) { return adviceFor(a).pri - adviceFor(b).pri; };
+    var checks = r.checks;
+    out.push('# Koi diagnostics findings', '');
+    if (d.server) out.push('- **Server:** ' + d.server);
+    if (d.os) out.push('- **OS:** ' + d.os);
+    if (d.runAt) out.push('- **Run at:** ' + d.runAt);
+    if (d.mode) out.push('- **Mode:** ' + d.mode);
+    if (d.proxyTested) out.push('- **Proxy tested:** ' + d.proxyTested);
+    if (d.scriptVersion) out.push('- **Script version:** v' + d.scriptVersion);
+    out.push('- **Source report:** ' + (d.source || '(not recorded)'));
+    out.push('- **Result:** ' + d.counts.FAIL + ' failed, ' + d.counts.WARN + ' warnings, ' +
+      d.counts.PASS + ' passed, ' + d.counts.INFO + ' info');
+
+    var detailed = function (title, list) {
+      if (!list.length) return;
+      out.push('', '## ' + title, '');
+      list.forEach(function (c) {
+        var a = adviceFor(c);
+        out.push('### [' + c.status + '] ' + a.title);
+        out.push('- **Check:** ' + c.name + ' - ' + (c.details || '(no details)'));
+        if (a.meaning) out.push('- **What it means:** ' + a.meaning);
+        if (a.steps && a.steps.length) {
+          out.push('- **What to do:**');
+          a.steps.forEach(function (s, i) { out.push('  ' + (i + 1) + '. ' + s); });
+        }
+        if (a.cmd) out.push('- **Read-only check:** `' + a.cmd + '`');
+        out.push('');
+      });
+    };
+    var fails = checks.filter(function (c) { return c.status === 'FAIL'; }).sort(byPri);
+    var warns = checks.filter(function (c) { return c.status === 'WARN'; });
+    detailed('Not working', fails);
+    detailed('Worth reviewing', warns.filter(function (c) { return !adviceFor(c).expected; }).sort(byPri));
+
+    var expected = warns.filter(function (c) { return adviceFor(c).expected; });
+    if (expected.length) {
+      out.push('', '## Expected behind a proxy', '');
+      expected.forEach(function (c) { out.push('- ' + c.name + ' - ' + c.details); });
+    }
+    var passes = checks.filter(function (c) { return c.status === 'PASS'; });
+    if (passes.length) {
+      out.push('', '## Working', '');
+      passes.forEach(function (c) { out.push('- ' + c.name + ' - ' + (c.details || 'OK')); });
+    }
+    out.push('', '---', 'Analysed with Koi Report Analyser V1.0 (independent tool by Linkan Dash; not a Palo Alto Networks or Koi product).');
+    return out.join('\n') + '\n';
+  }
+
+  // Uses the browser's print dialog, where "Save as PDF" is one of the destinations.
+  // The page title becomes the suggested file name while printing.
+  function pdfButton() {
+    var b = h('button', { class: 'btn small', type: 'button', text: 'Download PDF' });
+    b.addEventListener('click', function () {
+      if (!current) return;
+      var previousTitle = document.title;
+      var restore = function () { document.title = previousTitle; window.removeEventListener('afterprint', restore); };
+      document.title = baseName(current);
+      window.addEventListener('afterprint', restore);
+      window.print();
+    });
+    return b;
+  }
+
+  function downloadButtons() {
+    var wrap = h('div', { class: 'btn-row', role: 'group', 'aria-label': 'Download findings' },
+      h('span', { class: 'muted', text: 'Download findings:' }));
+    var options = [
+      ['Report (.md)', 'text/markdown', function (r) { return findingsMarkdown(r); }, '.md'],
+      ['Checks (.csv)', 'text/csv', function (r) { return findingsCsv(r); }, '.csv'],
+      ['Data (.json)', 'application/json', function (r) { return JSON.stringify(findingsData(r), null, 2) + '\n'; }, '.json']
+    ];
+    options.forEach(function (o) {
+      var b = h('button', { class: 'btn small', type: 'button', text: o[0] });
+      b.addEventListener('click', function () { if (current) downloadBlob(baseName(current) + o[3], o[1], o[2](current)); });
+      wrap.append(b);
+    });
+    return wrap;
+  }
+
+  function summaryText(r) {
+    var f = r.facts, out = [];
+    out.push('Koi diagnostics summary' + (f.computer ? ' - ' + f.computer : '') + (f.started ? ' (' + f.started + ')' : ''));
+    if (f.os) out.push('OS: ' + f.os);
+    if (f.proxy) out.push('Proxy tested: ' + f.proxy);
+    var group = function (title, list, withAdvice) {
+      if (!list.length) return;
+      out.push('', title + ':');
+      list.forEach(function (c) {
+        out.push('  [' + c.status + '] ' + c.name + ' - ' + c.details);
+        if (withAdvice) { var a = adviceFor(c); if (a.steps && a.steps[0]) out.push('      Next step: ' + a.steps[a.steps.length > 1 ? 1 : 0]); }
+      });
+    };
+    var byPri = function (a, b) { return adviceFor(a).pri - adviceFor(b).pri; };
+    group('Not working', r.checks.filter(function (c) { return c.status === 'FAIL'; }).sort(byPri), true);
+    group('Worth reviewing', r.checks.filter(function (c) { return c.status === 'WARN' && !adviceFor(c).expected; }).sort(byPri), true);
+    var ok = r.checks.filter(function (c) { return c.status === 'PASS'; }).map(function (c) { return c.name; });
+    if (ok.length) out.push('', 'Working: ' + ok.join(', '));
+    out.push('', 'Analysed with Koi Report Analyser V1.0 (independent tool by Linkan Dash; not a Palo Alto Networks or Koi product).');
+    return out.join('\n');
+  }
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.hidden = false;
+  }
+
+  function analyse(text, label, isSample) {
+    var report = parseReport(text);
+    if (!report.checks.length) {
+      results.textContent = '';
+      loaded.textContent = '';
+      showError('No diagnostic checks were found in "' + label + '". Load the KoiDiagnostics_<Computer>_<Timestamp>.txt file created by KoiDiagnostics_Simple.ps1, not the script itself or a different log.');
+      return;
+    }
+    render(report, label, isSample);
+  }
+
+  // ---------- inputs ----------
+  var fileInput = document.getElementById('file');
+  var drop = document.getElementById('drop');
+
+  function readFile(file) {
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) { showError('"' + file.name + '" is larger than 25 MB. Load the diagnostics report, not a raw log folder.'); return; }
+    var reader = new FileReader();
+    reader.onload = function () { analyse(decode(reader.result), file.name, false); };
+    reader.onerror = function () { showError('The file "' + file.name + '" could not be read. Try saving it again or paste its contents instead.'); };
+    reader.readAsArrayBuffer(file);
+  }
+
+  document.getElementById('pick').addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function () { readFile(fileInput.files[0]); fileInput.value = ''; });
+  document.getElementById('loadSample').addEventListener('click', function () { analyse(buildSample(), 'KoiDiagnostics_SRV-APP-014_20261009-101502.txt', true); });
+
+  var pastePanel = document.getElementById('pastePanel');
+  var togglePaste = document.getElementById('togglePaste');
+
+  // Reset: clear the loaded report, pasted text, file selection and any error, back to the empty start state.
+  document.getElementById('reset').addEventListener('click', function () {
+    current = null;
+    activeFilter = 'ALL';
+    results.textContent = '';
+    loaded.textContent = '';
+    errorBox.textContent = '';
+    errorBox.hidden = true;
+    document.getElementById('pasteBox').value = '';
+    pastePanel.hidden = true;
+    togglePaste.setAttribute('aria-expanded', 'false');
+    fileInput.value = '';
+  });
+  togglePaste.addEventListener('click', function () {
+    pastePanel.hidden = !pastePanel.hidden;
+    togglePaste.setAttribute('aria-expanded', String(!pastePanel.hidden));
+    if (!pastePanel.hidden) document.getElementById('pasteBox').focus();
+  });
+  document.getElementById('analysePaste').addEventListener('click', function () {
+    var t = document.getElementById('pasteBox').value;
+    if (!t.trim()) { showError('Paste the report text into the box first.'); return; }
+    analyse(t, 'Pasted text', false);
+  });
+
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) { e.preventDefault(); if (ev === 'drop' || e.target === document.documentElement) drop.classList.remove('over'); });
+  });
+  document.addEventListener('drop', function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) readFile(f);
+  });
+
+  // Open with the sample so the page shows what it does.
+  analyse(buildSample(), 'KoiDiagnostics_SRV-APP-014_20261009-101502.txt', true);
+})();
+</script>
+</body>
+</html>
